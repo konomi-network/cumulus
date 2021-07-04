@@ -126,9 +126,12 @@ impl CurrencyId {
 
 pub const KONO: CurrencyId = CurrencyId::Basic(Basic { id: 0});
 pub const DOT: CurrencyId = CurrencyId::Native(Native { id: 0});
-pub const NATIVE_DOT_INDEX: u8 = 1;
 pub const ETH: CurrencyId = CurrencyId::Native(Native { id: 1});
 pub const BTC: CurrencyId = CurrencyId::Native(Native { id: 2});
+pub const DORA: CurrencyId = CurrencyId::Native(Native { id: 3});
+pub const LIT: CurrencyId = CurrencyId::Native(Native { id: 4});
+
+pub const NATIVE_DOT_INDEX: u8 = 1;
 
 pub const CROSS_DOT: CurrencyId = CurrencyId::Cross(Cross { id: 0});
 pub const CROSS_DOT_INDEX: u8 = 4;

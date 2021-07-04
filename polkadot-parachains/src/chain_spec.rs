@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with Cumulus.  If not, see <http://www.gnu.org/licenses/>.
 
-use cumulus_primitives_core::ParaId;
 use hex_literal::hex;
-use rococo_parachain_runtime::{AccountId, AuraId, Signature};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
-use sp_core::{crypto::UncheckedInto, sr25519, Pair, Public};
-use sp_runtime::traits::{IdentifyAccount, Verify};
-use polkadot_parachain_primitives::{DOT, BTC, ETH, KONO};
+use sp_core::{crypto::UncheckedInto, Pair, Public, sr25519};
 use sp_runtime::FixedU128;
+use sp_runtime::traits::{IdentifyAccount, Verify};
+
+use cumulus_primitives_core::ParaId;
+use polkadot_parachain_primitives::{BTC, DORA, DOT, ETH, KONO, LIT};
+use rococo_parachain_runtime::{AccountId, AuraId, Signature};
+use statemint_common::Balance as StatemintBalance;
 
 /// Specialized `ChainSpec` for the normal parachain runtime.
 pub type ChainSpec = sc_service::GenericChainSpec<rococo_parachain_runtime::GenesisConfig, Extensions>;
@@ -87,6 +89,10 @@ pub fn get_chain_spec(id: ParaId) -> ChainSpec {
 					hex!["8ad57abb27cf9d6b067e8f8ec856600a71e20647884a52e10ad9e5af3f00013a"].into(),
 					// BTC
 					hex!["64f0bdf9ca65acf36df6189aab420ee2d6b07ac05f90a01744ede75c88a36721"].into(),
+					// DORA
+					hex!["78f1e2cbb72555b17a0de294350d87a746c8bd85e0b45849be6aeab3e32ffe08"].into(),
+					// LIT
+					hex!["f2af0783563c89b187928aeda716c46686cab8f44678bee264d56569f69a9e26"].into(),
 					get_account_id_from_seed::<sr25519::Public>("Alice"),
 				],
 				id,
@@ -163,6 +169,8 @@ fn testnet_genesis(
 	let eth_oracle_account: AccountId = hex!["2463e932d63a263395ac6730abd3a22049100f25a7cf7a3bcce8d5c9e9875a33"].into();
 	let dot_oracle_account: AccountId = hex!["16ae36476c937cfb1f970e3d374e23bfbff23b67c3224cf9b934105378dc1278"].into();
 	let kono_oracle_account: AccountId = hex!["8ad57abb27cf9d6b067e8f8ec856600a71e20647884a52e10ad9e5af3f00013a"].into();
+	let dora_oracle_account: AccountId = hex!["78f1e2cbb72555b17a0de294350d87a746c8bd85e0b45849be6aeab3e32ffe08"].into();
+	let lit_oracle_account: AccountId = hex!["f2af0783563c89b187928aeda716c46686cab8f44678bee264d56569f69a9e26"].into();
 	rococo_parachain_runtime::GenesisConfig {
 		system: rococo_parachain_runtime::SystemConfig {
 			code: rococo_parachain_runtime::WASM_BINARY
@@ -185,12 +193,16 @@ fn testnet_genesis(
 		tokens: rococo_parachain_runtime::TokensConfig {
 			balances: vec![
 				// one is 1000_000_000_000
-				(root_key.clone(), DOT, 1000_000_000_000_000_000_000),
+				(root_key.clone(), DOT, 1000_000_000_000_000_000),
 				(root_key.clone(), BTC, 1000_000_000_000_000_000),
-				(root_key.clone(), ETH, 1000_000_000_000_000_000_000_000),
-				(get_account_id_from_seed::<sr25519::Public>("Alice"), DOT, 1000_000_000_000_000_000_000),
-				(get_account_id_from_seed::<sr25519::Public>("Alice"), BTC, 1000_000_000_000_000_000),
+				(root_key.clone(), ETH, 1000_000_000_000_000_000),
+				(root_key.clone(), DORA, 1000_000_000_000_000_000),
+				(root_key.clone(), LIT, 1000_000_000_000_000_000),
+				(get_account_id_from_seed::<sr25519::Public>("Alice"), DOT, 1000_000_000_000_000_000_000_000),
+				(get_account_id_from_seed::<sr25519::Public>("Alice"), BTC, 1000_000_000_000_000_000_000_000),
 				(get_account_id_from_seed::<sr25519::Public>("Alice"), ETH, 1000_000_000_000_000_000_000_000),
+				(get_account_id_from_seed::<sr25519::Public>("Alice"), DORA, 1000_000_000_000_000_000_000_000),
+				(get_account_id_from_seed::<sr25519::Public>("Alice"), LIT, 1000_000_000_000_000_000_000_000),
 			]
 		},
 		floating_rate_lend: rococo_parachain_runtime::FloatingRateLendConfig {
@@ -200,7 +212,9 @@ fn testnet_genesis(
 				(true, Vec::from("DOT".as_bytes()), DOT, root_key.clone()),
 				(true, Vec::from("ETH".as_bytes()), ETH, root_key.clone()),
 				(true, Vec::from("BTC".as_bytes()), BTC, root_key.clone()),
-			]
+				(true, Vec::from("DORA".as_bytes()), DORA, root_key.clone()),
+				(true, Vec::from("LIT".as_bytes()), LIT, root_key.clone()),
+			],
 		},
 		chainlink_feed: rococo_parachain_runtime::ChainlinkFeedConfig {
 			pallet_admin: Some(root_key.clone()),
@@ -247,7 +261,7 @@ fn testnet_genesis(
 							root_key.clone(),
 						)
 					]
-				),				(
+				), (
 					root_key.clone(),
 					1000000000 as u128,
 					600,
@@ -260,8 +274,34 @@ fn testnet_genesis(
 							root_key.clone(),
 						)
 					]
+				), (
+					root_key.clone(),
+					1000000000 as u128,
+					600,
+					1,
+					8,
+					Vec::from("DORA / USD".as_bytes()),
+					vec![
+						(
+							dora_oracle_account,
+							root_key.clone(),
+						)
+					]
+				), (
+					root_key.clone(),
+					1000000000 as u128,
+					600,
+					1,
+					8,
+					Vec::from("LIT / USD".as_bytes()),
+					vec![
+						(
+							lit_oracle_account,
+							root_key.clone(),
+						)
+					]
 				),
-			]
+			],
 		},
 		aura_ext: Default::default(),
 		parachain_system: Default::default(),
@@ -280,8 +320,6 @@ fn shell_testnet_genesis(parachain_id: ParaId) -> shell_runtime::GenesisConfig {
 		parachain_system: Default::default(),
 	}
 }
-
-use statemint_common::Balance as StatemintBalance;
 
 /// Specialized `ChainSpec` for the normal parachain runtime.
 pub type StatemintChainSpec = sc_service::GenericChainSpec<statemint_runtime::GenesisConfig, Extensions>;
