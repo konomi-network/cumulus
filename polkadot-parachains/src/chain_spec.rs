@@ -209,11 +209,11 @@ fn testnet_genesis(
 			liquidation_threshold: FixedU128::from(1),
 			pools: vec![
 				(false, Vec::from("KONO".as_bytes()), KONO, root_key.clone()),
-				(true, Vec::from("DOT".as_bytes()), DOT, root_key.clone()),
+				(false, Vec::from("DOT".as_bytes()), DOT, root_key.clone()),
 				(true, Vec::from("ETH".as_bytes()), ETH, root_key.clone()),
 				(true, Vec::from("BTC".as_bytes()), BTC, root_key.clone()),
-				(true, Vec::from("DORA".as_bytes()), DORA, root_key.clone()),
-				(true, Vec::from("LIT".as_bytes()), LIT, root_key.clone()),
+				(false, Vec::from("DORA".as_bytes()), DORA, root_key.clone()),
+				(false, Vec::from("LIT".as_bytes()), LIT, root_key.clone()),
 			],
 		},
 		chainlink_feed: rococo_parachain_runtime::ChainlinkFeedConfig {
