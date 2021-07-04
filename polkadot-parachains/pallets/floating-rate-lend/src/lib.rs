@@ -27,6 +27,7 @@ mod pool;
 
 #[cfg(test)]
 mod tests;
+mod interest;
 
 // #[cfg(feature = "runtime-benchmarks")]
 // mod benchmarking;
@@ -48,8 +49,9 @@ pub mod pallet {
 
     use crate::pool::{Pool, PoolProxy, PoolRepository};
     use crate::types::{Convertor, UserAccountUtil, UserBalanceStats, UserData, UserSupplyDebtData};
+	use crate::interest::InterestModel;
 
-    /* --------- Local Libs --------- */
+	/* --------- Local Libs --------- */
     const PALLET_ID: PalletId = PalletId(*b"Floating");
 
     /// User supply struct
@@ -235,8 +237,7 @@ pub mod pallet {
             safe_factor_percentage: u64,
             close_factor_percentage: u64,
             discount_factor_percentage: u64,
-            utilization_factor_percentage_annum: u64,
-            initial_interest_rate_percentage_annum: u64,
+			interest: InterestModel,
         ) -> DispatchResultWithPostInfo {
             let origin = Self::ensure_signed_and_root(origin)?;
 
@@ -255,8 +256,7 @@ pub mod pallet {
                 Convertor::convert_percentage(safe_factor_percentage),
                 Convertor::convert_percentage(close_factor_percentage),
                 Convertor::convert_percentage(discount_factor_percentage),
-                Convertor::convert_percentage_annum_to_per_block(utilization_factor_percentage_annum),
-                Convertor::convert_percentage_annum_to_per_block(initial_interest_rate_percentage_annum),
+				interest,
                 Zero::zero(),
                 origin,
                 <frame_system::Pallet<T>>::block_number(),
@@ -327,8 +327,7 @@ pub mod pallet {
             safe_factor_percentage: u64,
             close_factor_percentage: u64,
             discount_factor_percentage: u64,
-            utilization_factor_percentage_annum: u64,
-            initial_interest_rate_percentage_annum: u64,
+			interest: Option<InterestModel>,
         ) -> DispatchResultWithPostInfo {
             log::debug!("received request to update floating-rate-pool {:?}", pool_id);
             let origin = Self::ensure_signed_and_root(origin)?;
@@ -338,8 +337,8 @@ pub mod pallet {
             pool.safe_factor = Convertor::convert_percentage(safe_factor_percentage);
             pool.close_factor = Convertor::convert_percentage(close_factor_percentage);
             pool.discount_factor = Convertor::convert_percentage(discount_factor_percentage);
-            pool.utilization_factor = Convertor::convert_percentage_annum_to_per_block(utilization_factor_percentage_annum);
-            pool.initial_interest_rate = Convertor::convert_percentage_annum_to_per_block(initial_interest_rate_percentage_annum);
+
+			if interest.is_some() { pool.interst = interest; }
 
             pool.last_updated_by = origin;
             pool.last_updated = <frame_system::Pallet<T>>::block_number();

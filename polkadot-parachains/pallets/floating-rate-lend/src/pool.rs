@@ -13,6 +13,7 @@ use polkadot_parachain_primitives::{PoolId, PriceValue, CustomError, Price};
 use crate::{Config, CurrencyIdOf, PoolStorage};
 use sp_std::collections::btree_map::BTreeMap;
 use crate::types::Convertor;
+use crate::interest::{InterestModel, TwoSegmentLinearModel};
 
 /// The floating-rate-pool for different lending transactions.
 /// Each floating-rate-pool needs to be associated with a currency id.
@@ -46,10 +47,8 @@ pub struct Pool<T: Config> {
     pub close_minimal_amount: FixedU128,
     /// The discount given to the arbitrageur
     pub discount_factor: FixedU128,
-    /// The multiplier to the utilization ratio
-    pub utilization_factor: FixedU128,
-    /// The constant for interest rate
-    pub initial_interest_rate: FixedU128,
+	/// The interest model
+	pub interest: InterestModel,
 
     /* ----- Metadata Related ----- */
     /// The block number when this floating-rate-pool is last updated
@@ -79,8 +78,7 @@ impl <T: Config> Pool<T> {
             Convertor::convert_percentage(90),
             Convertor::convert_percentage(50),
             Convertor::convert_percentage(95),
-            Convertor::convert_percentage_annum_to_per_block(20),
-            Convertor::convert_percentage_annum_to_per_block(2),
+			InterestModel::TwoSegmentLinear(TwoSegmentLinearModel::default()),
             FixedU128::from(0),
             owner,
             block_number,
@@ -95,8 +93,7 @@ impl <T: Config> Pool<T> {
                safe_factor: FixedU128,
                close_factor: FixedU128,
                discount_factor: FixedU128,
-               utilization_factor: FixedU128,
-               initial_interest_rate: FixedU128,
+			   interest: InterestModel,
                minimal_amount: FixedU128,
                owner: T::AccountId,
                block_number: T::BlockNumber,
@@ -112,14 +109,13 @@ impl <T: Config> Pool<T> {
             debt: FixedU128::zero(),
             total_debt_index: FixedU128::one(),
             interest_updated_at: block_number,
+			interest,
             minimal_amount,
             safe_factor,
             close_factor,
             /// 100 usd
             close_minimal_amount: FixedU128::from(100),
             discount_factor,
-            utilization_factor,
-            initial_interest_rate,
             last_updated: block_number,
             last_updated_by: owner.clone(),
             created_by: owner,
@@ -192,26 +188,11 @@ impl <T: Config> Pool<T> {
     pub fn discounted_price(&self, price: &PriceValue) -> PriceValue { self.discount_factor.mul(*price) }
 
     pub fn supply_interest_rate(&self) -> Result<FixedU128, CustomError> {
-        if self.supply == FixedU128::zero() {
-            return Ok(FixedU128::zero());
-        }
-
-        let utilization_ratio = self.utilization_ratio()?;
-        self.debt_interest_rate()?.checked_mul(&utilization_ratio).ok_or(CustomError::FlownError)
+		Ok(self.interest.supply_rate(&self.supply, &self.debt))
     }
 
     pub fn debt_interest_rate(&self) -> Result<FixedU128, CustomError> {
-        if self.supply == FixedU128::zero() {
-            return Ok(self.initial_interest_rate);
-        }
-
-        let utilization_ratio = self.utilization_ratio()?;
-        let rate = self.utilization_factor.checked_mul(&utilization_ratio).ok_or(CustomError::FlownError)?;
-        self.initial_interest_rate.checked_add(&rate).ok_or(CustomError::FlownError)
-    }
-
-    fn utilization_ratio(&self) -> Result<FixedU128, CustomError> {
-        self.debt.checked_div(&self.supply).ok_or(CustomError::FlownError)
+        Ok(self.interest.debt_rate(&self.supply, &self.debt))
     }
 }
 
